@@ -39,6 +39,8 @@ body {
   height: 100%;
   width: 100%;
   background-color: var(--bg-color);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .chat-header {
@@ -208,6 +210,7 @@ body {
   background-color: var(--message-bg);
   padding: 0;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .file-message.sent {

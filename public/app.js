@@ -59,14 +59,20 @@ document.body.addEventListener('drop', (e) => {
 
 // Paste functionality
 document.addEventListener('paste', (e) => {
-  if (document.activeElement === messageInput) return;
-  
   const items = e.clipboardData.items;
+  let hasFile = false;
+
   for (let item of items) {
     if (item.kind === 'file') {
+      hasFile = true;
       const file = item.getAsFile();
       if (file) handleFiles([file]);
     }
+  }
+
+  // If pasting files into messageInput, prevent default text paste
+  if (hasFile && document.activeElement === messageInput) {
+    e.preventDefault();
   }
 });
 
@@ -145,9 +151,9 @@ function addMessageToUI(data) {
 
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble sent';
-  
+
   const timestamp = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  
+
   bubble.innerHTML = `
     <div class="message-content">${escapeHtml(data.content)}</div>
     <div class="message-footer">
@@ -155,7 +161,7 @@ function addMessageToUI(data) {
       <button class="copy-btn-small" onclick="copyText(\`${escapeHtml(data.content).replace(/`/g, '\\`')}\`)" title="Copy">📋</button>
     </div>
   `;
-  
+
   messagesArea.appendChild(bubble);
 }
 
@@ -167,10 +173,10 @@ function addFileToUI(data) {
 
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble file-message sent';
-  
+
   const timestamp = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const isImage = data.type && data.type.startsWith('image/');
-  
+
   // Convert base64 to blob URL
   const binaryString = atob(data.data);
   const bytes = new Uint8Array(binaryString.length);
@@ -179,7 +185,7 @@ function addFileToUI(data) {
   }
   const blob = new Blob([bytes], { type: data.type });
   const url = URL.createObjectURL(blob);
-  
+
   if (isImage) {
     bubble.innerHTML = `
       <div class="image-content">
@@ -211,7 +217,7 @@ function addFileToUI(data) {
       </div>
     `;
   }
-  
+
   messagesArea.appendChild(bubble);
 }
 
@@ -239,7 +245,7 @@ function copyText(text) {
   const textarea = document.createElement('textarea');
   textarea.innerHTML = text;
   const decodedText = textarea.value;
-  
+
   navigator.clipboard.writeText(decodedText).then(() => {
     showToast('Text copied!');
   }).catch(err => {
@@ -279,7 +285,7 @@ function showToast(message) {
   toast.className = 'toast';
   toast.textContent = message;
   document.body.appendChild(toast);
-  
+
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => {
