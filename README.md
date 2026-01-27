@@ -1,84 +1,36 @@
-# ShareIt - Real-time File & Text Sharing
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-A simple, elegant web application for sharing text, images, and files in real-time using WebSocket technology.
+## Getting Started
 
-## Features
-
-- 📝 **Text Sharing**: Share text instantly with copy functionality
-- 🖼️ **Image Sharing**: Upload and share images with copy and download options
-- 📁 **File Sharing**: Upload any file type with download capability
-- 🎯 **Drag & Drop**: Easy file upload via drag and drop
-- 📋 **Paste Support**: Paste files and images directly from clipboard
-- ⚡ **Real-time**: All changes sync instantly across all connected clients
-- 🎨 **Beautiful UI**: Modern, responsive design with smooth animations
-
-## Installation
-
-All dependencies are already installed via npm. The project includes:
-
-- Express.js for the web server
-- Socket.io for real-time communication
-- Multer for file uploads
-- TypeScript for type safety
-
-## Usage
-
-### Development Mode
+First, run the development server:
 
 ```bash
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-### Production Mode
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-```bash
-npm run build
-npm start
-```
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-The server will start on http://localhost:3000
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## How to Use
+## Learn More
 
-1. **Share Text**: Type or paste text in the textarea and click "Share Text"
-2. **Share Files**:
-   - Click "Choose Files" button
-   - Drag and drop files onto the drop zone
-   - Paste images directly (Ctrl+V / Cmd+V)
-3. **Copy Content**: Click the "Copy" button on any text or image
-4. **Download Files**: Click the "Download" button on files and images
+To learn more about Next.js, take a look at the following resources:
 
-## Project Structure
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-```
-ShareIt/
-├── src/
-│   └── server.ts          # TypeScript server code
-├── public/
-│   ├── index.html         # Single-page application
-│   ├── styles.css         # Styling
-│   └── app.js            # Client-side JavaScript
-├── dist/                  # Compiled JavaScript (generated)
-├── uploads/               # Uploaded files storage (generated)
-├── package.json
-└── tsconfig.json
-```
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Tech Stack
+## Deploy on Vercel
 
-- **Backend**: Node.js + TypeScript + Express
-- **Real-time**: Socket.io
-- **File Upload**: Multer
-- **Frontend**: Vanilla JavaScript + HTML5 + CSS3
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-## Configuration
-
-- Default port: 3000 (can be changed via PORT environment variable)
-- File size limit: 50MB
-- Files are stored in the `uploads/` directory
-
-## Notes
-
-- All shared items are stored in memory and will be lost on server restart
-- For production use, consider adding persistent storage
-- HTTPS is recommended for clipboard API features to work in all browsers
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
