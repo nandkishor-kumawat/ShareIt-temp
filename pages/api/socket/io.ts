@@ -43,7 +43,7 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponseServerIO) => {
 
       socket.on('file-upload', (data) => {
         console.log('Received file upload, broadcasting:', data.name);
-        io.emit('file-shared', data);
+        io.emit('file-shared', { ...data, sender: socket.id.substring(0, 8) });
       });
 
       socket.on('disconnect', () => {

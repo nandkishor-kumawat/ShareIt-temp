@@ -10,9 +10,10 @@ import Image from 'next/image';
 
 interface FileMessageBubbleProps {
   message: FileMessage;
+  isSent: boolean;
 }
 
-export const FileMessageBubble = ({ message }: FileMessageBubbleProps) => {
+export const FileMessageBubble = ({ message, isSent }: FileMessageBubbleProps) => {
   const [blobUrl, setBlobUrl] = useState<string>('');
   const isImage = message.type && message.type.startsWith('image/');
 
@@ -42,8 +43,9 @@ export const FileMessageBubble = ({ message }: FileMessageBubbleProps) => {
 
   if (isImage) {
     return (
-      <div className="flex justify-end">
-        <div className="max-w-75 bg-white rounded-lg rounded-tr-none overflow-hidden shadow-sm animate-in slide-in-from-bottom-2 duration-200">
+      <div className={`flex ${isSent ? 'justify-end' : 'justify-start'}`}>
+        <div className={`max-w-75 rounded-lg overflow-hidden shadow-sm animate-in slide-in-from-bottom-2 duration-200 ${isSent ? 'bg-[#DCF8C6] rounded-tr-none' : 'bg-white rounded-tl-none'
+          }`}>
           <div className="relative w-full">
             {blobUrl && (
               <img
@@ -84,8 +86,9 @@ export const FileMessageBubble = ({ message }: FileMessageBubbleProps) => {
   const fileExt = message.name.split('.').pop()?.toUpperCase().substring(0, 4) || 'FILE';
 
   return (
-    <div className="flex justify-end">
-      <div className="max-w-[65%] bg-white rounded-lg rounded-tr-none overflow-hidden shadow-sm animate-in slide-in-from-bottom-2 duration-200">
+    <div className={`flex ${isSent ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-[65%] rounded-lg overflow-hidden shadow-sm animate-in slide-in-from-bottom-2 duration-200 ${isSent ? 'bg-[#DCF8C6] rounded-tr-none' : 'bg-white rounded-tl-none'
+        }`}>
         <div className="flex items-center gap-3 p-3">
           <div className="w-12 h-12 bg-[#075E54] rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0">
             {fileExt}

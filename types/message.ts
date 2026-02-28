@@ -13,6 +13,7 @@ export interface FileMessage {
   type: string;
   data: string;
   timestamp: number;
+  sender: string;
 }
 
 export type Message = TextMessage | FileMessage;

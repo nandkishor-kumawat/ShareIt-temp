@@ -10,6 +10,7 @@ import { Button } from './ui/button';
 import { Paperclip, Send } from 'lucide-react';
 import { Card } from './ui/card';
 import { toast } from 'sonner';
+import { useClipboardPaste } from '@/lib/use-clipboard-paste';
 
 export const ChatInterface = () => {
   const { socket, isConnected } = useSocket();
@@ -60,7 +61,7 @@ export const ChatInterface = () => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      if (e.currentTarget.value.trim()) handleSendMessage();
     }
   };
 
@@ -115,51 +116,20 @@ export const ChatInterface = () => {
     handleFileUpload(e.dataTransfer.files);
   };
 
-  const handlePaste = (e: ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    let hasFile = false;
-    const files: File[] = [];
-
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].kind === 'file') {
-        hasFile = true;
-        const file = items[i].getAsFile();
-        if (file) {
-          files.push(file);
-        }
-      }
-    }
-
-    // Handle file paste
-    if (files.length > 0) {
-      const dataTransfer = new DataTransfer();
-      files.forEach(file => dataTransfer.items.add(file));
-      handleFileUpload(dataTransfer.files);
-
-      // If pasting files into the textarea, prevent default text paste
-      if (document.activeElement === textareaRef.current) {
-        e.preventDefault();
-      }
-    }
-    // If not focused on textarea and pasting text, send it directly
-    else if (document.activeElement !== textareaRef.current) {
-      const text = e.clipboardData?.getData('text');
-      if (text && socket) {
-        e.preventDefault();
-        socket.emit('share-text', { content: text });
-      }
-    }
-  };
+  useClipboardPaste({ socket, textareaRef, onFilesPasted: handleFileUpload });
 
   useEffect(() => {
-    document.addEventListener('paste', handlePaste);
-    return () => {
-      document.removeEventListener('paste', handlePaste);
+    const onkeydown = (e: KeyboardEvent) => {
+      if (document.activeElement !== textareaRef.current && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+        textareaRef.current?.focus();
+      }
     };
-  }, [socket]);
-
+    window.addEventListener('keydown', onkeydown);
+    return () => {
+      window.removeEventListener('keydown', onkeydown);
+    };
+  }, []);
+  console.log(messages)
   return (
     <div
       className="flex flex-col h-screen max-w-6xl mx-auto bg-[#ECE5DD]"
@@ -203,10 +173,11 @@ export const ChatInterface = () => {
         )}
 
         {messages.map((message) => {
+          const isSent = 'sender' in message && socket?.id?.startsWith(message.sender);
           if ('content' in message) {
-            return <TextMessageBubble key={message.id} message={message} />;
+            return <TextMessageBubble key={message.id} message={message} isSent={!!isSent} />;
           } else {
-            return <FileMessageBubble key={message.id} message={message} />;
+            return <FileMessageBubble key={message.id} message={message} isSent={!!isSent} />;
           }
         })}
         <div ref={messagesEndRef} />

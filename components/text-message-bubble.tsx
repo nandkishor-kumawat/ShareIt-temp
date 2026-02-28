@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 
 interface TextMessageBubbleProps {
   message: TextMessage;
+  isSent: boolean;
 }
 
-export const TextMessageBubble = ({ message }: TextMessageBubbleProps) => {
+export const TextMessageBubble = ({ message, isSent }: TextMessageBubbleProps) => {
   const handleCopy = async () => {
     const success = await copyTextToClipboard(message.content);
     if (success) {
@@ -21,8 +22,11 @@ export const TextMessageBubble = ({ message }: TextMessageBubbleProps) => {
   };
 
   return (
-    <div className="flex justify-end">
-      <div className="max-w-[65%] bg-[#DCF8C6] rounded-lg rounded-tr-none p-3 shadow-sm animate-in slide-in-from-bottom-2 duration-200">
+    <div className={`flex ${isSent ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-[65%] rounded-lg p-3 shadow-sm animate-in slide-in-from-bottom-2 duration-200 ${isSent
+          ? 'bg-[#DCF8C6] rounded-tr-none'
+          : 'bg-white rounded-tl-none'
+        }`}>
         <div className="text-sm text-[#303030] whitespace-pre-wrap wrap-break-word">
           {message.content}
         </div>
