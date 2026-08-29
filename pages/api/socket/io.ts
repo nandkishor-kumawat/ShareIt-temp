@@ -10,6 +10,9 @@ export const config = {
   },
 };
 
+// Each chunk is 256 KB of base64 text. 512 KB gives comfortable headroom for the JSON envelope.
+const MAX_BUFFER_SIZE = 512 * 1024;
+
 const ioHandler = (req: NextApiRequest, res: NextApiResponseServerIO) => {
   if (!res.socket.server.io) {
     const path = '/api/socket/io';
@@ -17,9 +20,9 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponseServerIO) => {
     const io = new ServerIO(httpServer, {
       path: path,
       addTrailingSlash: false,
+      maxHttpBufferSize: MAX_BUFFER_SIZE,
     });
 
-    // Store the io instance globally immediately
     setIO(io);
     res.socket.server.io = io;
 
@@ -35,16 +38,35 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponseServerIO) => {
           type: 'text',
           content: data.content,
           timestamp: Date.now(),
-          sender: socket.id.substring(0, 8)
+          sender: socket.id.substring(0, 8),
         };
-
         io.emit('text-shared', textData);
       });
 
-      socket.on('file-upload', (data) => {
-        console.log('Received file upload, broadcasting:', data.name);
-        io.emit('file-shared', { ...data, sender: socket.id.substring(0, 8) });
-      });
+      // Relay each chunk directly to all clients — no server-side reassembly.
+      // Each receiver accumulates chunks and reconstructs the file independently.
+      socket.on(
+        'file-chunk',
+        (payload: {
+          transferId: string;
+          name: string;
+          size: number;
+          type: string;
+          index: number;
+          total: number;
+          chunk: string;
+          sender?: string;
+        }) => {
+          // Acknowledge to the sender so it can proceed to the next chunk
+          socket.emit('chunk-ack', { transferId: payload.transferId, index: payload.index });
+
+          // Broadcast the chunk (including sender id) to everyone
+          io.emit('file-chunk-broadcast', {
+            ...payload,
+            sender: socket.id.substring(0, 8),
+          });
+        },
+      );
 
       socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
