@@ -68,30 +68,29 @@ export const ChatInterface = () => {
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || !socket) return;
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const formData = new FormData();
-      formData.append('file', file);
-
+    for (const file of Array.from(files)) {
       try {
-        console.log('Uploading file:', file.name);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Strip the data URL prefix (e.g. "data:image/png;base64,")
+            resolve(result.split(',')[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
         });
 
-        const result = await response.json();
-        console.log('Upload response:', result);
+        const fileData = {
+          id: Date.now() + '-' + Math.round(Math.random() * 1e9),
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          data: base64,
+          timestamp: Date.now(),
+        };
 
-        if (!response.ok) {
-          throw new Error('Upload failed');
-        }
-
-        // Emit the file data via socket so all clients receive it
-        if (result.fileData) {
-          socket.emit('file-upload', result.fileData);
-        }
-
+        socket.emit('file-upload', fileData);
         toast.success('File shared successfully!');
       } catch (error) {
         console.error('Upload error:', error);
