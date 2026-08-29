@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSocket } from '@/providers/socket-provider';
-import { TextMessage, FileMessage } from '@/types/message';
+import { TextMessage, FileMessage, PendingFileMessage } from '@/types/message';
 import { TextMessageBubble } from './text-message-bubble';
 import { FileMessageBubble } from './file-message-bubble';
+import { PendingFileBubble } from './pending-file-bubble';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
 import { Paperclip, Send } from 'lucide-react';
@@ -15,18 +16,11 @@ import { useClipboardPaste } from '@/lib/use-clipboard-paste';
 // Each base64 chunk is ~256 KB — well within the 512 KB server limit
 const CHUNK_SIZE = 256 * 1024; // bytes of base64 text per chunk
 
-interface UploadProgress {
-  name: string;
-  sentChunks: number;
-  totalChunks: number;
-}
-
 export const ChatInterface = () => {
   const { socket, isConnected } = useSocket();
-  const [messages, setMessages] = useState<(TextMessage | FileMessage)[]>([]);
+  const [messages, setMessages] = useState<(TextMessage | FileMessage | PendingFileMessage)[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -49,6 +43,9 @@ export const ChatInterface = () => {
       sender: string; index: number; total: number; chunk: string;
     }) => {
       const { transferId, name, size, type, sender, index, total, chunk } = payload;
+
+      // Skip chunks we sent ourselves — we already added the message directly
+      if (socket.id?.startsWith(sender)) return;
 
       if (!incomingTransfers.has(transferId)) {
         incomingTransfers.set(transferId, {
@@ -116,12 +113,11 @@ export const ChatInterface = () => {
 
     for (const file of Array.from(files)) {
       try {
-        // Read entire file as base64
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => {
             const result = reader.result as string;
-            resolve(result.split(',')[1]); // strip "data:<mime>;base64," prefix
+            resolve(result.split(',')[1]);
           };
           reader.onerror = reject;
           reader.readAsDataURL(file);
@@ -130,12 +126,22 @@ export const ChatInterface = () => {
         const transferId = Date.now() + '-' + Math.round(Math.random() * 1e9);
         const totalChunks = Math.ceil(base64.length / CHUNK_SIZE);
 
-        setUploadProgress({ name: file.name, sentChunks: 0, totalChunks });
+        // Add a pending bubble to the message list immediately
+        const pending: PendingFileMessage = {
+          id: transferId,
+          pending: true,
+          name: file.name,
+          size: file.size,
+          fileType: file.type,
+          sentChunks: 0,
+          totalChunks,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, pending]);
 
         for (let i = 0; i < totalChunks; i++) {
           const chunk = base64.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
 
-          // Register ack listener BEFORE emitting to avoid missing a fast response
           await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
               socket.off('chunk-ack', onAck);
@@ -145,7 +151,7 @@ export const ChatInterface = () => {
             function onAck({ transferId: ackId, index }: { transferId: string; index: number }) {
               if (ackId === transferId && index === i) {
                 clearTimeout(timeout);
-                socket.off('chunk-ack', onAck);
+                socket!.off('chunk-ack', onAck);
                 resolve();
               }
             }
@@ -163,14 +169,35 @@ export const ChatInterface = () => {
             });
           });
 
-          setUploadProgress({ name: file.name, sentChunks: i + 1, totalChunks });
+          // Update progress on the pending bubble
+          setMessages((prev) =>
+            prev.map((m) =>
+              'pending' in m && m.id === transferId
+                ? { ...m, sentChunks: i + 1 }
+                : m
+            )
+          );
         }
 
-        setUploadProgress(null);
+        // Replace the pending bubble with the real FileMessage directly
+        // (don't wait for the broadcast — we already have the data)
+        const fileMessage: FileMessage = {
+          id: transferId,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          data: base64,
+          timestamp: Date.now(),
+          sender: socket.id!.substring(0, 8),
+        };
+        setMessages((prev) =>
+          prev.map((m) => (m.id === transferId ? fileMessage : m))
+        );
         toast.success('File shared successfully!');
       } catch (error) {
         console.error('Upload error:', error);
-        setUploadProgress(null);
+        // Remove the stuck pending bubble on failure
+        setMessages((prev) => prev.filter((m) => !('pending' in m)));
         toast.error('Failed to share file');
       }
     }
@@ -205,7 +232,7 @@ export const ChatInterface = () => {
       window.removeEventListener('keydown', onkeydown);
     };
   }, []);
-  console.log(messages)
+
   return (
     <div
       className="flex flex-col h-screen max-w-6xl mx-auto bg-[#ECE5DD]"
@@ -249,6 +276,9 @@ export const ChatInterface = () => {
         )}
 
         {messages.map((message) => {
+          if ('pending' in message) {
+            return <PendingFileBubble key={message.id} message={message} />;
+          }
           const isSent = 'sender' in message && socket?.id?.startsWith(message.sender);
           if ('content' in message) {
             return <TextMessageBubble key={message.id} message={message} isSent={!!isSent} />;
@@ -261,20 +291,6 @@ export const ChatInterface = () => {
 
       {/* Input Area */}
       <div className="bg-[#F0F0F0] p-4 border-t border-[#D1D7DB]">
-        {uploadProgress && (
-          <div className="mb-2 px-1">
-            <div className="flex justify-between text-xs text-[#667781] mb-1">
-              <span className="truncate max-w-[70%]">Sending {uploadProgress.name}…</span>
-              <span>{Math.round((uploadProgress.sentChunks / uploadProgress.totalChunks) * 100)}%</span>
-            </div>
-            <div className="h-1 rounded-full bg-[#D1D7DB] overflow-hidden">
-              <div
-                className="h-full bg-[#25D366] rounded-full transition-all duration-200"
-                style={{ width: `${(uploadProgress.sentChunks / uploadProgress.totalChunks) * 100}%` }}
-              />
-            </div>
-          </div>
-        )}
         <div className="flex items-center gap-2 bg-white rounded-[24px] px-3 py-2">
           <input
             ref={fileInputRef}
@@ -289,7 +305,6 @@ export const ChatInterface = () => {
             className="text-[#667781] hover:text-[#303030] shrink-0 h-9 w-9 p-0"
             onClick={() => fileInputRef.current?.click()}
             title="Attach file"
-            disabled={!!uploadProgress}
           >
             <Paperclip className="h-6 w-6" />
           </Button>

@@ -16,4 +16,16 @@ export interface FileMessage {
   sender: string;
 }
 
-export type Message = TextMessage | FileMessage;
+/** Shown in the message list while a file is still being uploaded */
+export interface PendingFileMessage {
+  id: string;
+  pending: true;
+  name: string;
+  size: number;
+  fileType: string;
+  sentChunks: number;
+  totalChunks: number;
+  timestamp: number;
+}
+
+export type Message = TextMessage | FileMessage | PendingFileMessage;

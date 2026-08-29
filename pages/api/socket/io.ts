@@ -11,7 +11,7 @@ export const config = {
 };
 
 // Each chunk is 256 KB of base64 text. 512 KB gives comfortable headroom for the JSON envelope.
-const MAX_BUFFER_SIZE = 512 * 1024;
+const MAX_BUFFER_SIZE = 100 * 1024 * 1024; // 100 MB
 
 const ioHandler = (req: NextApiRequest, res: NextApiResponseServerIO) => {
   if (!res.socket.server.io) {
